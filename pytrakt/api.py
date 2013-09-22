@@ -104,7 +104,10 @@ class TraktAPI:
         return True
 
     def rate_movie(self, movie, rating):
-        rating = int(rating)
+        try:
+            rating = int(rating)
+        except:
+            return None
         print "Rating %s a %s" % (movie, rating)
 
         import json
@@ -170,15 +173,38 @@ class TraktAPI:
 
         return True
 
-    def get_movie_recommendations(self):
+    def get_genre_slugs(self):
+        response = self.get_results(
+            '/genres/movies.json/%s' % self.apikey,
+        )
+
+        return [x['slug'] for x in response]
+
+    def get_movie_recommendations(
+        self,
+        genre=None,
+        start_year=None,
+        end_year=None
+    ):
         print "Getting movie recommendations"
+
+        params = {
+            'hide_collected': True,
+            'hide_watchlisted': True
+        }
+
+        ## Filter
+        if genre:
+            params['genre'] = genre
+        if start_year:
+            params['start_year'] = start_year
+        if end_year:
+            params['end_year'] = end_year
+
         response = self.get_results(
             '/recommendations/movies/%s' % self.apikey,
             authenticate=True,
-            params={
-                'hide_collected': True,
-                'hide_watchlisted': True
-            }
+            params=params
         )
         movies = []
 

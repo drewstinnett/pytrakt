@@ -17,7 +17,9 @@ loader = []
 skipped_movies = []
 all_genres = t.get_genre_slugs()
 
-parser = argparse.ArgumentParser(description='Rate some movies on trakt.tv')
+description = 'Rate movies.  Movies are pulled in based on recommendations'
+
+parser = argparse.ArgumentParser(description=description)
 parser.add_argument('-g', '--genre', help='Genre slug to limit results to',
                     choices=all_genres)
 parser.add_argument('-s', '--start-year', help='Start year for results',
@@ -54,6 +56,7 @@ while True:
         print "%s (%s) %s%%" % (movie['title'], movie['year'],
                                 movie['ratings']['percentage'])
         print movie['overview']
+        print 'http://www.imdb.com/title/%s' % movie['imdb_id']
         print
 
         movie.get_summary()

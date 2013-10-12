@@ -13,7 +13,14 @@ class Movie:
 
         self.t = trakt_api
 
-        self.info = movie_json
+        ## TODO:  normalize these options, right now they're going to
+        ## different spots
+        if movie_json:
+            self.info = movie_json
+        elif imdbid:
+            self.info = self.t.get_results(
+                '/movie/summary.json/APIKEY/%s' % (imdbid)
+            )
 
     def get_summary(self):
         import json
@@ -42,4 +49,7 @@ class Movie:
         return self.info[item]
 
     def __repr__(self):
+        import sys
+        reload(sys)
+        sys.setdefaultencoding("latin-1")
         return ("%s (%s)" % (self.info['title'], self.info['year']))

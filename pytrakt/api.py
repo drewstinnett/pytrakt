@@ -38,30 +38,11 @@ class TraktAPI:
 
     def add_movie_watchlist(self, movie):
         print "Adding %s to watchlist" % movie
-        import json
-        pydata = {
-            'username': self.username,
-            'password': self.password,
-            'movies': [
-                {
-                    'imdb_id': movie['imdb_id']
-                }
-            ]
-        }
-        jsondata = json.dumps(pydata)
-        clen = len(jsondata)
-
-        import urllib2
-        req = urllib2.Request(
-            self.url_api + "/movie/watchlist/" + self.apikey,
-            jsondata, {
-                'Content-Type': 'application/json',
-                'Content-Length': clen
-            }
+        response = self.get_results(
+            "/movie/watchlist/APIKEY",
+            authenticate=True,
+            params={'movies': [{'imdb_id': movie['imdb_id']}]}
         )
-        f = urllib2.urlopen(req)
-        response = json.load(f)
-        f.close()
 
         if response['status'] != 'success':
             import sys
@@ -145,26 +126,11 @@ class TraktAPI:
     def dismiss_movie_recommendation(self, movie):
         print "Dismissing %s" % movie
 
-        import json
-        pydata = {
-            'username': self.username,
-            'password': self.password,
-            'imdb_id': movie['imdb_id']
-        }
-        jsondata = json.dumps(pydata)
-        clen = len(jsondata)
-
-        import urllib2
-        req = urllib2.Request(
-            self.url_api + "/recommendations/movies/dismiss/" + self.apikey,
-            jsondata, {
-                'Content-Type': 'application/json',
-                'Content-Length': clen
-            }
+        response = self.get_results(
+            '/recommendations/movies/dismiss/APIKEY',
+            authenticate=True,
+            params={'imdb_id': movie['imdb_id']}
         )
-        f = urllib2.urlopen(req)
-        response = json.load(f)
-        f.close()
 
         if response['status'] != 'success':
             import sys
@@ -175,10 +141,61 @@ class TraktAPI:
 
     def get_genre_slugs(self):
         response = self.get_results(
-            '/genres/movies.json/%s' % self.apikey,
+            '/genres/movies.json/APIKEY',
         )
 
         return [x['slug'] for x in response]
+
+    def get_rated_movies(self):
+        movies = []
+        response = self.get_results(
+            '/activity/user.json/APIKEY/USERNAME/movie/rating/0',
+            authenticate=True,
+        )
+        for movie in [x['movie'] for x in response['activity']]:
+            movies.append(movie)
+
+        return movies
+
+    def get_trending_movies(self, ignore_seen=True):
+        movies = []
+        response = self.get_results(
+            '/movies/trending.json/APIKEY/',
+            authenticate=None,
+        )
+        for movie in response:
+            from pytrakt.movie import Movie
+            m = Movie(self, movie_json=movie)
+
+            add_movie = True
+            if ignore_seen:
+                try:
+                    if self.is_movie_seen(movie):
+                        add_movie = None
+                except:
+                    pass
+
+            if add_movie:
+                movies.append(m)
+
+        return movies
+
+    def is_movie_seen(self, movie):
+        #print movie
+        response = self.get_results(
+            '/activity/user/movies.json/APIKEY/USERNAME/%s/seen' % (
+                movie['imdb_id']),
+            authenticate=True
+        )
+        try:
+            activity_length = len(response['activity'])
+        except:
+            activity_length = 0
+
+        if activity_length > 0:
+            return True
+        else:
+            return None
 
     def get_movie_recommendations(
         self,
@@ -202,7 +219,7 @@ class TraktAPI:
             params['end_year'] = end_year
 
         response = self.get_results(
-            '/recommendations/movies/%s' % self.apikey,
+            '/recommendations/movies/APIKEY',
             authenticate=True,
             params=params
         )
@@ -221,6 +238,10 @@ class TraktAPI:
         authenticate=None,
         params={}
     ):
+        ## Replace some shortcuts
+        url = url.replace('APIKEY', self.apikey)
+        url = url.replace('USERNAME', self.username)
+
         post_data = {}
         if authenticate:
             post_data['username'] = self.username
@@ -234,7 +255,7 @@ class TraktAPI:
         jsondata = json.dumps(post_data)
         clen = len(jsondata)
 
-        full_url = "%s/%s" % (self.url_api, url)
+        full_url = "%s%s" % (self.url_api, url)
 
         import urllib2
         req = urllib2.Request(
